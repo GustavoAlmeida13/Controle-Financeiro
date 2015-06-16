@@ -1,0 +1,161 @@
+Imports System
+Imports System.IO
+Imports System.Text
+Imports System.Math
+
+Public Class CashInputsAndOutputs
+    Dim LimparTextBoxValor As Boolean = True
+    Dim LimparTextBoxDescrição As Boolean = True
+    Dim LimparTextBoxDetalhes As Boolean = True
+    Dim CursorNoFimDaLinhaAposPrimeiroClick As Boolean = True
+    Dim valorAtual As Integer = 0
+    Dim ValorDepoisDoBackspace As Double = 0
+
+    Private Sub InserirSomenteNumerosNaTextBox(sender As Object, e As KeyPressEventArgs) Handles ValorTextBox.KeyPress
+        If Not (Char.IsNumber(e.KeyChar) Or Char.IsControl(e.KeyChar)) Then e.Handled = True
+
+    End Sub
+
+    Private Sub MoverCursorParaUltimaPosiçãoDaTextBoxValor() Handles ValorTextBox.MouseClick
+        ColocaCursorNaUltimaPosicao(ValorTextBox)
+    End Sub
+
+    Private Sub LimparTextBoxValorAposClick() Handles ValorTextBox.MouseClick
+        If LimparTextBoxValor = True Then
+            ValorTextBox.Text = "R$ 0,00"
+            LimparTextBoxValor = False
+
+        End If
+    End Sub
+
+    Private Sub LimparTextBoxTipoDoGastoAposClick() Handles TextBoxTipoDoGasto.MouseClick
+        If LimparTextBoxDescrição = True Then
+            TextBoxTipoDoGasto.Clear()
+            LimparTextBoxDescrição = False
+
+        End If
+    End Sub
+
+    Private Sub LimparTextBoxDetalhesAposClick() Handles DetalhesTextBox.MouseClick
+        If LimparTextBoxDetalhes = True Then
+            DetalhesTextBox.Clear()
+            LimparTextBoxDetalhes = False
+
+        End If
+    End Sub
+
+    Private Sub LimparTodosOsCamposAposEnviar() Handles BotaoEnviar.MouseClick
+        ValorTextBox.Text = "R$ 0.00"
+        TextBoxTipoDoGasto.Clear()
+        DetalhesTextBox.Clear()
+    End Sub
+
+    Private Sub PadronizarLabelsETextBoxDeAcordoComOTipoSaida(sender As Object, e As EventArgs) Handles CashOutput.CheckedChanged
+        LabelDataDaEntrada.Text = "Data do Vencimento"
+        TextBoxTipoDoGasto.Text = "Alimentação, Transporte, Etc..."
+        DetalhesTextBox.Text = "Detalhes sobre a saida de dinheiro"
+        TipoDoGastoLabel.Text = "Tipo da Saida"
+
+        LimparTextBoxDetalhes = True
+        LimparTextBoxDescrição = True
+    End Sub
+
+    Private Sub ArmazenaDadosInseridosEmArquivoDeTexto(sender As Object, e As EventArgs) Handles BotaoEnviar.MouseClick
+        Dim TextoParaInserirNoArquivo As String = "Data: " + DaDataDeEntradasESaidas.Text +
+                                            "  --->  Tipo: " + TextBoxTipoDoGasto.Text +
+                                            "  --->  Detalhes: " + DetalhesTextBox.Text.Replace(vbCrLf, "<ENTER>") +
+                                            "  --->  Valor: " + ValorTextBox.Text + vbCrLf
+        Dim RegistroDeReceitasEDespesas As String = "C:\Users\Cliente\Documents\ReceitasEDespesas.txt"
+        CashOutput.Checked = True
+
+        My.Computer.FileSystem.WriteAllText(RegistroDeReceitasEDespesas, TextoParaInserirNoArquivo, True)
+
+        MsgBox("Dados Registrados", Title:="")
+    End Sub
+
+    Private Sub ColocaCursorNaUltimaPosicao(textbox As TextBox)
+        ValorTextBox.Select(textbox.Text.Length, 0)
+    End Sub
+
+    Private Sub PadronizarLabelsETextBoxDeAcordoComOTipoEntrada(sender As Object, e As EventArgs) Handles CashInput.CheckedChanged
+        LabelDataDaEntrada.Text = "Data do Recebimento"
+        TextBoxTipoDoGasto.Text = "Salario,Restituição Imposto de Renda, Etc..."
+        TipoDoGastoLabel.Text = "Tipo da Entrada"
+        DetalhesTextBox.Text = "Detalhes sobre a entrada de dinheiro"
+
+        LimparTextBoxDetalhes = True
+        LimparTextBoxDescrição = True
+    End Sub
+
+    Private Sub TrataCaractereRecebido(sender As Object, ByVal UltimaTeclaApertada As System.Windows.Forms.KeyPressEventArgs) Handles ValorTextBox.KeyPress
+        Dim caractereApertado As Char = UltimaTeclaApertada.KeyChar
+
+        If (Char.IsDigit(caractereApertado)) Then
+            AtualizarValor(caractereApertado)
+            UltimaTeclaApertada.Handled = True
+        ElseIf Char.IsControl(caractereApertado) Then
+            RemoveUmaCasaDecimal(caractereApertado)
+            UltimaTeclaApertada.Handled = True
+        Else
+            MsgBox("Digite Apenas Numeros Por Favor")
+            UltimaTeclaApertada.Handled = True
+        End If
+
+        ColocaCursorNaUltimaPosicao(ValorTextBox)
+    End Sub
+
+    Private Sub RemoveUmaCasaDecimal(UltimoCaractereApertado As Char)
+        If UltimoCaractereApertado = Chr(8) Then
+            valorAtual = valorAtual / 10
+            ArredondaOValorParaBaixo(valorAtual)
+        End If
+    End Sub
+
+    Private Sub ArredondaOValorParaBaixo(ValorAposBackspace As Integer)
+        Dim ValorDaTextBox As String = valorAtual
+        Dim TamanhoDaEntrada As Integer = ValorDaTextBox.Length - 1
+        'ValorAposBackspace = ValorDaTextBox.Substring(TamanhoDaEntrada) + 1
+        If ValorAposBackspace > 5 Then
+            'Subtrai-se o 1 devido ao arredondamento positivo no caso de numeros maiores que 5
+            valorAtual = valorAtual - 1
+            MostraNumeroNaTextBoxEmReais(valorAtual)
+        Else
+            MostraNumeroNaTextBoxEmReais(valorAtual)
+        End If
+
+
+    End Sub
+
+    Private Sub AtualizarValor(caractereDoDigito As Char)
+        Dim valorDoDigito As Double = Convert.ToDouble(caractereDoDigito.ToString)
+
+        valorAtual = valorAtual * 10 + valorDoDigito
+
+        MostraNumeroNaTextBoxEmReais(valorAtual) 'chamada da função passando o parametro valorAtual
+    End Sub
+    Private Sub MostraNumeroNaTextBoxEmReais(numero As Double) ' declaração da função
+        ValorTextBox.Clear()
+        ValorTextBox.Text = " R$ " + ColocaDuasCasasDecimais(numero.ToString)
+    End Sub
+
+    Private Function ColocaDuasCasasDecimais(numeroEscrito As String)
+        Dim numeroEscritoComDuasCasasDecimais As String = ""
+
+        If numeroEscrito.Length = 1 Then
+            numeroEscrito = "00" + numeroEscrito
+        ElseIf numeroEscrito.Length = 2 Then
+            numeroEscrito = "0" + numeroEscrito
+
+        End If
+
+        Dim parteDecimal As String = numeroEscrito.Substring(numeroEscrito.Length - 2, 2)
+        Dim ParteDasCentenas As String = numeroEscrito.Substring(0, numeroEscrito.Length - 2)
+
+        numeroEscritoComDuasCasasDecimais = ParteDasCentenas + "," + parteDecimal
+
+        Return numeroEscritoComDuasCasasDecimais
+    End Function
+
+End Class
+'Erros a Corrigir:
+'Nao limpar TextBoxTipoDoGasto após apertar o radio buton SAIDA ou ENTRADA
